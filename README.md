@@ -2,7 +2,7 @@
 
 This is a web-based tool that uses your webcam to intuitively explore the concept of a regression coefficient (β) in real-time.
 
-![Interactive Regression Visualizer in action](https://placehold.co/600x400/111827/ffffff?text=App+Screenshot+Here)
+[![Interactive Regression Visualizer in action](screenshot.jpg)](screenshot.jpg)
 
 ## Features
 
