@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regression Coefficient Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Xanh+Mono:ital@0;1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Xanh Mono', monospace;
+            background-color: #111827; /* Dark background */
+        }
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: auto;
+            border: 2px solid #4b5563;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+        }
+        #webcam {
+            width: 100%;
+            height: auto;
+            display: block;
+            transform: scaleX(-1);
+        }
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transform: scaleX(-1);
+        }
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 480px;
+            color: #d1d5db;
+        }
+        .loader {
+            border: 8px solid #374151;
+            border-radius: 50%;
+            border-top: 8px solid #3b82f6;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+            color: #d1d5db;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .control-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.75rem;
+            background-color: #1f2937;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+        .controls label {
+            cursor: pointer;
+        }
+        .controls input[type="checkbox"] {
+            margin-right: 0.5rem;
+            accent-color: #3b82f6;
+            width: 16px;
+            height: 16px;
+        }
+        .controls input[type="range"] {
+            accent-color: #3b82f6;
+            flex-grow: 1;
+        }
+        .controls select {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 0.25rem;
+            padding: 0.25rem;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="max-w-3xl w-full mx-auto p-4 md:p-8">
+        <h1 class="text-2xl font-bold text-center mb-2">Regression Coefficient Visualizer</h1>
+        <p id="instruction-text" class="text-center text-gray-400 mb-4">Clap + show hands to begin...</p>
+        
+        <div id="controls" class="controls" style="display: none;">
+            <div class="control-group">
+                <label for="x-scale-select">X-Axis:</label>
+                <select id="x-scale-select">
+                    <option value="0_10">0 to 10</option>
+                    <option value="0_100" selected>0 to 100</option>
+                    <option value="-1_1">-1 to 1</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="y-scale-select">Y-Axis:</label>
+                <select id="y-scale-select">
+                    <option value="0_10">0 to 10</option>
+                    <option value="0_100" selected>0 to 100</option>
+                    <option value="-1_1">-1 to 1</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="show-data">
+                    <input type="checkbox" id="show-data" checked> Data Points
+                </label>
+            </div>
+            <div class="control-group">
+                <label for="precision-slider">Precision</label>
+                <input type="range" id="precision-slider" min="20" max="190" value="80">
+            </div>
+        </div>
+
+        <div id="loading-container" class="loader-container">
+            <div class="loader"></div>
+            <p class="mt-4 text-lg">Starting camera...</p>
+        </div>
+
+        <div class="container" style="display: none;">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="overlayCanvas"></canvas>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="https://github.com/dbann/regression_visualizer" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-500 hover:text-gray-400 transition-colors">
+                code/feedback: github.com/dbann/regression_visualizer
+            </a>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- DOM Elements ---
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('overlayCanvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const loadingContainer = document.getElementById('loading-container');
+        const container = document.querySelector('.container');
+        const instructionText = document.getElementById('instruction-text');
+        const controlsContainer = document.getElementById('controls');
+        const showDataCheckbox = document.getElementById('show-data');
+        const precisionSlider = document.getElementById('precision-slider');
+        const xScaleSelect = document.getElementById('x-scale-select');
+        const yScaleSelect = document.getElementById('y-scale-select');
+
+        // --- State Variables ---
+        let showDataPoints = true;
+        let scatterPoints = [];
+        let xScale = { min: 0, max: 100 };
+        let yScale = { min: 0, max: 100 };
+
+        // --- Event Listeners ---
+        showDataCheckbox.addEventListener('change', (e) => showDataPoints = e.target.checked);
+        precisionSlider.addEventListener('input', (e) => {
+            const maxError = 200 - parseInt(e.target.value);
+            scatterPoints = generateScatterPoints(maxError);
+        });
+        const parseScale = (scaleString) => {
+            const [min, max] = scaleString.split('_').map(Number);
+            return { min, max };
+        };
+        xScaleSelect.addEventListener('change', (e) => xScale = parseScale(e.target.value));
+        yScaleSelect.addEventListener('change', (e) => yScale = parseScale(e.target.value));
+        
+        // --- Initial Setup ---
+        function generateScatterPoints(errorMagnitude) {
+            const points = [];
+            const numPoints = 70;
+            for (let i = 0; i < numPoints; i++) {
+                points.push({
+                    xRatio: Math.random(),
+                    error: (Math.random() - 0.5) * errorMagnitude * 2
+                });
+            }
+            return points;
+        }
+        scatterPoints = generateScatterPoints(200 - parseInt(precisionSlider.value));
+
+        // --- Main Drawing Function ---
+        function onResults(results) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length === 2) {
+                instructionText.style.display = 'none';
+                drawRegressionVisualizer(results.multiHandLandmarks);
+            } else {
+                instructionText.style.display = 'block';
+            }
+        }
+        
+        // --- Drawing Logic ---
+        function drawDataPoints(p1, p2) {
+            canvasCtx.fillStyle = 'rgba(59, 130, 246, 0.5)';
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+
+            scatterPoints.forEach(point => {
+                const lineX = p1.x + dx * point.xRatio;
+                const lineY = p1.y + dy * point.xRatio;
+                const finalY = lineY + point.error;
+                canvasCtx.beginPath();
+                canvasCtx.arc(lineX, finalY, 4, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            });
+        }
+        
+        // Maps a value from one range to another
+        function mapRange(value, inMin, inMax, outMin, outMax) {
+            return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+        }
+
+        function drawRegressionVisualizer(hands) {
+            const [hand1Landmarks, hand2Landmarks] = hands;
+            const palmIndices = [0, 5, 9, 13, 17];
+            const palm1_norm = getAveragePosition(hand1Landmarks, palmIndices);
+            const palm2_norm = getAveragePosition(hand2Landmarks, palmIndices);
+            if (!palm1_norm || !palm2_norm) return;
+
+            // Correctly identify left and right hands on the mirrored screen
+            const screenLeftHand_norm = palm1_norm.x < palm2_norm.x ? palm1_norm : palm2_norm;
+            const screenRightHand_norm = palm1_norm.x < palm2_norm.x ? palm2_norm : palm1_norm;
+
+            // p1 and p2 are the raw pixel coordinates for drawing on the canvas
+            const p1 = { x: screenLeftHand_norm.x * canvasElement.width, y: screenLeftHand_norm.y * canvasElement.height };
+            const p2 = { x: screenRightHand_norm.x * canvasElement.width, y: screenRightHand_norm.y * canvasElement.height };
+            
+            if (showDataPoints) {
+                drawDataPoints(p1, p2);
+            }
+
+            // Draw the line and points
+            canvasCtx.strokeStyle = '#3b82f6';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(p1.x, p1.y);
+            canvasCtx.lineTo(p2.x, p2.y);
+            canvasCtx.stroke();
+            
+            canvasCtx.fillStyle = '#3b82f6';
+            canvasCtx.beginPath(); canvasCtx.arc(p1.x, p1.y, 8, 0, 2 * Math.PI); canvasCtx.fill();
+            canvasCtx.beginPath(); canvasCtx.arc(p2.x, p2.y, 8, 0, 2 * Math.PI); canvasCtx.fill();
+
+            // --- Coefficient Calculation using selected scales ---
+            const scaledP1 = {
+                x: mapRange(p1.x, 0, canvasElement.width, xScale.min, xScale.max),
+                y: mapRange(p1.y, canvasElement.height, 0, yScale.min, yScale.max)
+            };
+            const scaledP2 = {
+                x: mapRange(p2.x, 0, canvasElement.width, xScale.min, xScale.max),
+                y: mapRange(p2.y, canvasElement.height, 0, yScale.min, yScale.max)
+            };
+
+            const dx = scaledP2.x - scaledP1.x;
+            const dy = scaledP2.y - scaledP1.y;
+
+            if (Math.abs(dx) < 1e-9) return;
+            
+            const coefficient = -(dy / dx);
+            const text = `β = ${coefficient.toFixed(2)}`;
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2 - 35; 
+
+            // Draw un-mirrored text
+            canvasCtx.save();
+            canvasCtx.translate(midX, midY); 
+            canvasCtx.scale(-1, 1);
+            
+            canvasCtx.font = 'bold 24px "Xanh Mono", monospace';
+            canvasCtx.textAlign = 'center';
+            const textMetrics = canvasCtx.measureText(text);
+            const bgWidth = textMetrics.width + 20;
+            const bgHeight = 40;
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            canvasCtx.beginPath();
+            canvasCtx.roundRect(-bgWidth / 2, -bgHeight / 2 - 5, bgWidth, bgHeight, 8);
+            canvasCtx.fill();
+            canvasCtx.fillStyle = '#ffffff';
+            canvasCtx.fillText(text, 0, 0);
+            
+            canvasCtx.restore();
+        }
+
+        // --- Helper & Initialization ---
+        function getAveragePosition(hand, indices) {
+            let sumX = 0, sumY = 0, count = 0;
+            for (const index of indices) {
+                if (hand && hand[index]) {
+                    sumX += hand[index].x;
+                    sumY += hand[index].y;
+                    count++;
+                }
+            }
+            if (count === 0) return null;
+            return { x: sumX / count, y: sumY / count };
+        }
+
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.setOptions({
+            maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
+        });
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => await hands.send({image: videoElement}),
+            width: 640, height: 480
+        });
+        camera.start().then(() => {
+            loadingContainer.style.display = 'none';
+            container.style.display = 'block';
+            controlsContainer.style.display = 'grid';
+        }).catch(err => {
+            console.error("Error starting camera:", err);
+            loadingContainer.innerHTML = '<p class="text-red-400">Could not start camera. Please ensure you have a webcam enabled and have granted permission.</p>';
+        });
+        
+    </script>
+</body>
+</html>
