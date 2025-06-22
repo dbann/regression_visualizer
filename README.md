@@ -2,6 +2,8 @@
 
 This is a web-based tool that uses your webcam to intuitively explore the concept of a regression coefficient (β) in real-time.
 
+**[try it!](https://dbann.github.io/regression_visualizer/)**
+
 [![Interactive Regression Visualizer in action](screenshot.jpg)](screenshot.jpg)
 
 ## Features
