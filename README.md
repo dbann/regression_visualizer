@@ -4,7 +4,7 @@ This is a web-based tool that uses your webcam to intuitively explore the concep
 
 **[try it!](https://dbann.github.io/regression_visualizer/)**
 
-[![Interactive Regression Visualizer in action](screenshot.jpg)](screenshot.jpg)
+[![Interactive Regression Visualizer in action](screenshot2.jpg)](screenshot2.jpg)
 
 ## Features
 
