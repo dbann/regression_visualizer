@@ -1,6 +1,6 @@
 # Interactive Regression Visualizer
 
-This is a web-based tool that uses your webcam to intuitively explore the concept of a regression coefficient (β) in real-time.
+Use your hands to visually explore the concept of a regression coefficient (β) + precision in real-time. A demo of an 'intuition-first' approach to learn statistics. Built with AI (gemini 2.5).
 
 **[try it!](https://dbann.github.io/regression_visualizer/)**
 
