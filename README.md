@@ -23,7 +23,18 @@ Use your hands to visually explore the concept of a regression coefficient (β) 
 
 ## Development
 
-This application was created with the help of Google's Gemini Pro. The core functionality is built with standard HTML, JavaScript, and CSS, using the [MediaPipe Hands](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker) library for hand tracking. Inspired by [this](https://x.com/googleaidevs/status/1936193938639012065) X thread 21st June 2025. 
+This application was created with the help of Google's Gemini Pro. The core functionality is built with standard HTML, JavaScript, and CSS, using the [MediaPipe Hands](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker) library for hand tracking. Inspired by [this]
+(https://x.com/googleaidevs/status/1936193938639012065) X thread 21st June 2025. 
+
+## Related Projects
+
+- [Eyeball the Regression Line](https://sophieehill.shinyapps.io/eyeball-regression/)  
+  A Shiny app by [Sophie Hill](https://github.com/sophieehill) where users try to draw the best-fit regression line through scatterplots.  
+  Repo: [github.com/sophieehill/eyeball-regression](https://github.com/sophieehill/eyeball-regression)
+
+- [Guess the Correlation](https://guessthecorrelation.com)  
+  A simple browser game by @omarwagih that challenges users to estimate the correlation coefficient by eye.
+
 
 ## Feedback
 
